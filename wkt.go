@@ -6,7 +6,7 @@
 // http://en.wikipedia.org/wiki/Well-known_text
 package wkt
 
-// Geom is one of the supported geometry types supported by this package
+// Geom is one of the supported geometry types in this package
 type Geom interface {
 	IsMeasured() bool
 	Is3d() bool
@@ -63,7 +63,7 @@ func equalCoords(c, o []Coord) bool {
 	return true
 }
 
-// MultiPoint is a list unconnected points
+// MultiPoint is a list of unconnected points
 type MultiPoint struct {
 	Coords []Coord
 	Opt
