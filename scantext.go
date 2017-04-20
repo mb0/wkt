@@ -7,6 +7,7 @@ package wkt
 import (
 	"bytes"
 	"fmt"
+	"io"
 )
 
 type scanner struct {
@@ -15,7 +16,17 @@ type scanner struct {
 	opt Opt
 }
 
+func (s *scanner) peek() (byte, error) {
+	if s.i >= len(s.raw) {
+		return '\x00', io.ErrUnexpectedEOF
+	}
+	return s.raw[s.i], nil
+}
+
 func (s *scanner) skipWs() {
+	if s.i >= len(s.raw) {
+		return
+	}
 	for i, b := range s.raw[s.i:] {
 		if b == ' ' || b == '\n' || b == '\t' || b == '\r' {
 			continue
@@ -26,9 +37,12 @@ func (s *scanner) skipWs() {
 }
 func (s *scanner) scanStart() error {
 	s.skipWs()
-	start := s.raw[s.i] == '('
-	if !start {
-		return fmt.Errorf("expect '(' got %q", s.raw[s.i])
+	c, err := s.peek()
+	if err != nil {
+		return err
+	}
+	if c != '(' {
+		return fmt.Errorf("expect '(' got %q", c)
 	}
 	s.i++
 	return nil
@@ -36,9 +50,13 @@ func (s *scanner) scanStart() error {
 
 func (s *scanner) scanContinue() (bool, error) {
 	s.skipWs()
-	comma := s.raw[s.i] == ','
-	if !comma && s.raw[s.i] != ')' {
-		return comma, fmt.Errorf("expect ',' or ')' got %q", s.raw[s.i])
+	c, err := s.peek()
+	if err != nil {
+		return false, err
+	}
+	comma := c == ','
+	if !comma && c != ')' {
+		return false, fmt.Errorf("expect ',' or ')' got %q", c)
 	}
 	s.i++
 	return comma, nil
@@ -46,6 +64,9 @@ func (s *scanner) scanContinue() (bool, error) {
 
 func (s *scanner) scanIdent() (string, error) {
 	s.skipWs()
+	if s.i >= len(s.raw) {
+		return "", io.ErrUnexpectedEOF
+	}
 	var (
 		ident []byte
 		b     byte
@@ -70,6 +91,9 @@ func (s *scanner) scanIdent() (string, error) {
 }
 func (s *scanner) scanCoord() (c Coord, comma bool, err error) {
 	s.skipWs()
+	if s.i >= len(s.raw) {
+		return c, false, io.ErrUnexpectedEOF
+	}
 	r := bytes.NewReader(s.raw[s.i:])
 	var fs []*float64
 	if s.opt == M {
@@ -84,7 +108,10 @@ func (s *scanner) scanCoord() (c Coord, comma bool, err error) {
 		}
 		s.i = len(s.raw) - r.Len()
 		s.skipWs()
-		b := s.raw[s.i]
+		b, err := s.peek()
+		if err != nil {
+			return c, false, io.ErrUnexpectedEOF
+		}
 		if comma = b == ','; comma || b == ')' {
 			s.i++
 			break

@@ -5,6 +5,7 @@
 package wkt
 
 import (
+	"io"
 	"testing"
 )
 
@@ -135,6 +136,27 @@ func TestOpt(t *testing.T) {
 		}
 		if test.m != g.IsMeasured() {
 			t.Errorf("test %d: expected measured to be %v", i, test.m)
+		}
+	}
+}
+
+func TestInvalid(t *testing.T) {
+	tests := []struct {
+		data string
+	}{
+		{"MULTIPOLYGON("},
+		{"MULTIPOLYGON(("},
+		{"MULTIPOLYGON(((-11.33535 51.29165,0,0,-11.33535 51.29165)"},
+		{"MULTIPOLYGON(((0"},
+		{"POLYGON("},
+	}
+	for i, test := range tests {
+		g, err := Parse([]byte(test.data))
+		if g != nil {
+			t.Errorf("test %d: expected nil got %v", i, g)
+		}
+		if err != io.ErrUnexpectedEOF {
+			t.Errorf("test %d: expected %v got %v", io.ErrUnexpectedEOF, err)
 		}
 	}
 }
